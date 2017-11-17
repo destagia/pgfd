@@ -7,12 +7,11 @@ import chainer.functions as F
 import cupy
 import numpy as np
 
-from pgfd import const
-from pgfd import Game, Bullet
+from pgfd import const, game
 
 xp = cupy
 
-def unit_vector(self, k, e):
+def unit_vector(k, e):
     unit_vector = xp.zeros(const.POLICY_PARAMETER_SIZE, dtype=xp.float32)
     unit_vector[k] = e
     return unit_vector
@@ -96,8 +95,14 @@ class Rollout(object):
 # for _ in range(0, const.ITERATION):
 #     trainer.train()
 
-game = Game()
-game.add(Bullet((0, 0), (20, 100)))
+game_manager = game.GameManager()
+policy = Policy(xp.random.rand(const.POLICY_PARAMETER_SIZE))
 
-for _ in range(0, 1000):
+for i in range(0, 1000):
+    if i % 100 == 0:
+        game = game_manager.new_game()
+        action = policy(xp.asarray([game.current_state()])).data[0]
+        print(action)
+        game.shoot(action / 10)
+
     game.update()
