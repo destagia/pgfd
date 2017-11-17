@@ -4,6 +4,7 @@ Canon game
 
 import sys
 import pygame
+import numpy as np
 from pygame.locals import *
 
 SCREEN_SIZE = (160, 90)
@@ -15,6 +16,7 @@ class Game(object):
         self.__display = display
         self.__clock = pygame.time.Clock()
         self.__game_objects = []
+
 
     def add(self, game_object):
         self.__game_objects.append(game_object)
