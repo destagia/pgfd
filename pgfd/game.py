@@ -25,6 +25,9 @@ class Bullet(object):
         self.__v0 = v0
         self.__v = (v0[0], v0[1])
 
+    @property
+    def position(self): return self.__position
+
     def update(self, dt):
         x, y = self.__position
         x += self.__v[0] * dt
@@ -41,16 +44,22 @@ class Enemy(object):
     def __init__(self, position):
         self.__position = position
 
+        size = 10
+        xi = int(self.__position[0]) - (size / 2)
+        yi = int(self.__position[1]) - (size / 2)
+        self.__rect = pygame.Rect(xi, yi, size, size)
+
     @property
     def position(self): return self.__position
+
+    def collide(self, position):
+        return self.__rect.collidepoint(position[0], position[1])
 
     def update(self, dt):
         pass
 
     def draw(self, display):
-        xi = int(self.__position[0])
-        yi = int(self.__position[1])
-        display.circle((100, 200, 0), (xi, yi), 2)
+        display.rect((100, 200, 0), self.__rect)
 
 class Game(object):
     def __init__(self, display, enemy_position):
@@ -61,6 +70,8 @@ class Game(object):
         self.__enemy = Enemy(enemy_position)
         self.add(self.__enemy)
 
+        self.__is_terminal = False
+
     def add(self, game_object):
         self.__game_objects.append(game_object)
 
@@ -70,6 +81,9 @@ class Game(object):
 
     def current_state(self):
         return self.__enemy.position
+
+    @property
+    def is_terminal(self): return self.__is_terminal
 
     def update(self):
         for event in pygame.event.get():
@@ -87,7 +101,14 @@ class Game(object):
 
         self.__display.update()
 
-        return 0.1
+        if self.__bullet is not None:
+            if self.__enemy.collide(self.__bullet.position):
+                print('Hit!')
+                self.__is_terminal = True
+                return 1.0
+            else:
+                self.__is_terminal = self.__bullet.position[0] > (self.__enemy.position[0] + 20)
+                return 0.0
 
 class Display(object):
     def __init__(self):
@@ -104,7 +125,9 @@ class Display(object):
         x, y = position
         y = SCREEN_SIZE[1] - y
         pygame.draw.circle(self.__screen, color, (x, y), radius)
-    
+
+    def rect(self, color, rect):
+        pygame.draw.rect(self.__screen, color, rect)
 
 class GameManager(object):
     def __init__(self):

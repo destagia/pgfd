@@ -57,8 +57,13 @@ class Trainer(object):
             d_parameter[k] = d_parameter_increment
             d_J[k] = d_expected_income
 
+        # policy gradient in finite-difference
         gfd = xp.linalg.inv(d_parameter.T.dot(d_parameter)).dot(d_parameter.T).dot(d_J)
         print(gfd)
+
+        # update the parameter of policy with gradient
+        self.__target_parameter += (const.LEARNING_RATE * gfd)
+
 
 class Rollout(object):
     def __init__(self, policy_factory, game_manager):
@@ -74,7 +79,7 @@ class Rollout(object):
 
         income = 0
         discount_rate = const.DISCOUNT_RATE
-        for k in range(0, const.ROLLOUT_EPOC):
+        while not game.is_terminal:
             reward = game.update()
             income += discount_rate * reward
             discount_rate *= const.DISCOUNT_RATE
