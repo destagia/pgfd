@@ -12,9 +12,6 @@ class Bullet(object):
         x += self.__v[0] * dt
         y += self.__v[1] * dt
         self.__position = (x, y)
-
-        print(self.__position)
-        
         self.__v = (self.__v[0], self.__v[1] - GRAVITY * dt)
 
     def draw(self, display):

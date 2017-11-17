@@ -47,5 +47,7 @@ class Display(object):
         pygame.display.update()
 
     def circle(self, color, position, radius):
-        pygame.draw.circle(self.__screen, color, position, radius)
+        x, y = position
+        y = SCREEN_SIZE[1] - y
+        pygame.draw.circle(self.__screen, color, (x, y), radius)
     
