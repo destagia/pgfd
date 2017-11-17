@@ -25,26 +25,25 @@ class TestGame(object):
         return self.__state
 
     def update(self, action):
-        self.__state = xp.random.rand(const.POLICY_STATE_DIM)
+        self.__state = xp.random.rand(const.STATE_SIZE)
         return numpy.random.uniform()
 
 class Trainer(object):
     def __init__(self, policy_factory, game_factory):
-        self.__policy_factory = policy_factory
-        self.__game_factory = game_factory
-        self.__target_parameter = xp.random.rand(const.POLICY_STATE_DIM)
+        self.__rollout = Rollout(policy_factory, game_factory)
+        self.__target_parameter = xp.random.rand(const.POLICY_PARAMETER_SIZE)
 
     def train(self):
-        incomes = numpy.asarray([self.rollout(self.__target_parameter) for j in range(0, const.TRAIN_ROLLOUT_COUNT)])
+        incomes = numpy.asarray([self.__rollout(self.__target_parameter) for j in range(0, const.TRAIN_ROLLOUT_COUNT)])
         expected_income = incomes.mean()
 
-        d_J = xp.zeros(const.POLICY_STATE_DIM)
-        d_parameter = xp.zeros((const.POLICY_STATE_DIM, const.POLICY_STATE_DIM))
+        d_J = xp.zeros(const.POLICY_PARAMETER_SIZE)
+        d_parameter = xp.zeros((const.POLICY_PARAMETER_SIZE, const.POLICY_PARAMETER_SIZE))
 
-        for k in range(0, const.POLICY_STATE_DIM):
+        for k in range(0, const.POLICY_PARAMETER_SIZE):
             d_parameter_increment = self.unit_vector(k, const.PARAMETER_E)
             p = self.__target_parameter + d_parameter_increment
-            d_expected_income = (self.rollout(p) - expected_income) / const.PARAMETER_E
+            d_expected_income = (self.__rollout(p) - expected_income) / const.PARAMETER_E
 
             d_parameter[k] = d_parameter_increment
             d_J[k] = d_expected_income
@@ -53,11 +52,16 @@ class Trainer(object):
         print(gfd)
 
     def unit_vector(self, k, e):
-        unit_vector = xp.zeros(const.POLICY_STATE_DIM, dtype=xp.float32)
+        unit_vector = xp.zeros(const.POLICY_PARAMETER_SIZE, dtype=xp.float32)
         unit_vector[k] = e
         return unit_vector
-            
-    def rollout(self, policy_parameter):
+
+class Rollout(object):
+    def __init__(self, policy_factory, game_factory):
+        self.__policy_factory = policy_factory
+        self.__game_factory = game_factory
+    
+    def __call__(self, policy_parameter):
         game = self.__game_factory()
         policy = self.__policy_factory(policy_parameter)
 
@@ -71,8 +75,7 @@ class Trainer(object):
             discount_rate *= const.DISCOUNT_RATE
 
         return income
-            
-policy = Policy(const.POLICY_STATE_DIM)
+
 trainer = Trainer(Policy, TestGame)
 
 for _ in range(0, const.ITERATION):
