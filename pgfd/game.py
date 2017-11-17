@@ -53,7 +53,17 @@ class Enemy(object):
     def position(self): return self.__position
 
     def collide(self, position):
-        return self.__rect.collidepoint(position[0], position[1])
+        x, y = position
+        if self.__rect.x > x:
+            return False
+        if self.__rect.x + self.__rect.width < x:
+            return False
+        if self.__rect.y > y:
+            return False
+        if self.__rect.y + self.__rect.height < y:
+            return False
+
+        return True
 
     def update(self, dt):
         pass
@@ -64,7 +74,6 @@ class Enemy(object):
 class Game(object):
     def __init__(self, display, enemy_position):
         self.__display = display
-        self.__clock = pygame.time.Clock()
         self.__game_objects = []
 
         self.__enemy = Enemy(enemy_position)
@@ -86,14 +95,7 @@ class Game(object):
     def is_terminal(self): return self.__is_terminal
 
     def update(self):
-        for event in pygame.event.get():
-            if event.type == QUIT:
-                sys.exit()
-
-        delta_ms = self.__clock.tick(30)
-        delta_s = delta_ms / 1000
-
-        self.__display.clear_buffer()
+        delta_s = self.__display.clear_buffer()
 
         for game_object in self.__game_objects:
             game_object.update(delta_s)
@@ -103,7 +105,6 @@ class Game(object):
 
         if self.__bullet is not None:
             if self.__enemy.collide(self.__bullet.position):
-                print('Hit!')
                 self.__is_terminal = True
                 return 1.0
             else:
@@ -112,11 +113,19 @@ class Game(object):
 
 class Display(object):
     def __init__(self):
+        self.__clock = pygame.time.Clock()
         self.__screen = pygame.display.set_mode(SCREEN_SIZE)
         self.__x = 0.0
 
     def clear_buffer(self):
+        for event in pygame.event.get():
+            if event.type == QUIT:
+                sys.exit()
+
         self.__screen.fill((0, 0, 0))
+
+        delta_ms = self.__clock.tick(30)
+        return delta_ms / 1000
 
     def update(self):
         pygame.display.update()
@@ -129,11 +138,24 @@ class Display(object):
     def rect(self, color, rect):
         pygame.draw.rect(self.__screen, color, rect)
 
-class GameManager(object):
+class DevNull(object):
     def __init__(self):
-        self.__display = Display()
+        self.__delta_time = 1.0 / 30.0
+        
+    def clear_buffer(self): return self.__delta_time
+    def update(self): pass
+    def circle(self, color, position, radius): pass
+    def rect(self, color, rect): pass
 
-    def new_game(self):
-        enemy_position = random_safe_area_position()
-        game = Game(self.__display, enemy_position)
+class GameManager(object):
+    def new_game(self, disp, enemy_position = None):
+        if enemy_position is None:
+            enemy_position = random_safe_area_position()
+
+        if disp:
+            display = Display()
+        else:
+            display = DevNull()
+
+        game = Game(display, enemy_position)
         return game

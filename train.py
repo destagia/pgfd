@@ -9,7 +9,7 @@ import numpy as np
 
 from pgfd import const, game
 
-xp = cupy
+xp = np
 
 def unit_vector(k, e):
     unit_vector = xp.zeros(const.POLICY_PARAMETER_SIZE, dtype=xp.float32)
@@ -39,8 +39,12 @@ class Policy(object):
 
 class Trainer(object):
     def __init__(self, policy_factory, game_manager):
+        self.__policy_factory = policy_factory
         self.__rollout = Rollout(policy_factory, game_manager)
         self.__target_parameter = xp.random.rand(const.POLICY_PARAMETER_SIZE) * const.INITIAL_W_SCALE
+
+    def policy(self):
+        return self.__policy_factory(self.__target_parameter)
 
     def train(self):
         incomes = np.asarray([self.__rollout(self.__target_parameter) for j in range(0, const.TRAIN_ROLLOUT_COUNT)])
@@ -49,10 +53,16 @@ class Trainer(object):
         d_J = xp.zeros(const.POLICY_PARAMETER_SIZE)
         d_parameter = xp.zeros((const.POLICY_PARAMETER_SIZE, const.POLICY_PARAMETER_SIZE))
 
+        print('Expected income: {}'.format(expected_income))
         for k in range(0, const.POLICY_PARAMETER_SIZE):
             d_parameter_increment = unit_vector(k, const.PARAMETER_E)
-            p = self.__target_parameter + d_parameter_increment
-            d_expected_income = (self.__rollout(p) - expected_income) / const.PARAMETER_E
+            parameter_increment = self.__target_parameter + d_parameter_increment
+
+            incomes_increment = np.asarray([self.__rollout(parameter_increment) for j in range(0, const.TRAIN_ROLLOUT_COUNT)])
+            expected_income_increment = incomes_increment.mean()
+            print('Incremented expected income: {}'.format(expected_income_increment))
+
+            d_expected_income = (expected_income_increment - expected_income) / const.PARAMETER_E
 
             d_parameter[k] = d_parameter_increment
             d_J[k] = d_expected_income
@@ -64,7 +74,6 @@ class Trainer(object):
         # update the parameter of policy with gradient
         self.__target_parameter += (const.LEARNING_RATE * gfd)
 
-
 class Rollout(object):
     def __init__(self, policy_factory, game_manager):
         self.__policy_factory = policy_factory
@@ -72,22 +81,42 @@ class Rollout(object):
 
     def __call__(self, policy_parameter):
         policy = self.__policy_factory(policy_parameter)
-        game = game_manager.new_game()
+        game = game_manager.new_game(False)
 
         action = policy(xp.asarray([game.current_state()])).data[0]
         game.shoot(action)
 
         income = 0
-        discount_rate = const.DISCOUNT_RATE
         while not game.is_terminal:
             reward = game.update()
-            income += discount_rate * reward
-            discount_rate *= const.DISCOUNT_RATE
+            income += reward
 
         return income
+
+class Tester(object):
+    def __init__(self, game_manager, trainer):
+        self.__game_manager = game_manager
+        self.__trainer = trainer
+
+    def test(self, enemy_position):
+        game = self.__game_manager.new_game(True, enemy_position)
+        policy = self.__trainer.policy()
+    
+        action = policy(xp.asarray([game.current_state()])).data[0]
+        game.shoot(action)
+        while not game.is_terminal:
+            game.update()
 
 if __name__ == '__main__':
     game_manager = game.GameManager()
     trainer = Trainer(Policy, game_manager)
+    tester = Tester(game_manager, trainer)
+
     for _ in range(0, const.ITERATION):
         trainer.train()
+
+        tester.test([100.0, 50.0])
+        tester.test([40.0, 80.0])
+        tester.test([140.0, 30.0])
+        tester.test([140.0, 70.0])
+
