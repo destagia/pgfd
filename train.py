@@ -7,6 +7,7 @@ import cupy
 import numpy
 
 from pgfd import const
+from pgfd import Game, Bullet
 
 xp = cupy
 
@@ -76,7 +77,12 @@ class Rollout(object):
 
         return income
 
-trainer = Trainer(Policy, TestGame)
+# trainer = Trainer(Policy, TestGame)
+# for _ in range(0, const.ITERATION):
+#    trainer.train()
 
-for _ in range(0, const.ITERATION):
-    trainer.train()
+game = Game()
+game.add(Bullet((0, 0), (20, 100)))
+
+for _ in range(0, 1000):
+    game.update()
