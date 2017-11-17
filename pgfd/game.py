@@ -87,6 +87,8 @@ class Game(object):
 
         self.__display.update()
 
+        return 0.1
+
 class Display(object):
     def __init__(self):
         self.__screen = pygame.display.set_mode(SCREEN_SIZE)

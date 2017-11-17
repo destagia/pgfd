@@ -37,21 +37,10 @@ class Policy(object):
         h = F.linear(state, w1)
         return F.linear(h, w2)
 
-class TestGame(object):
-    def __init__(self):
-        self.update(0)
-
-    def current_state(self):
-        return self.__state
-
-    def update(self, action):
-        self.__state = xp.random.rand(const.STATE_SIZE)
-        return np.random.uniform()
-
 class Trainer(object):
-    def __init__(self, policy_factory, game_factory):
-        self.__rollout = Rollout(policy_factory, game_factory)
-        self.__target_parameter = xp.random.rand(const.POLICY_PARAMETER_SIZE)
+    def __init__(self, policy_factory, game_manager):
+        self.__rollout = Rollout(policy_factory, game_manager)
+        self.__target_parameter = xp.random.rand(const.POLICY_PARAMETER_SIZE) * const.INITIAL_W_SCALE
 
     def train(self):
         incomes = np.asarray([self.__rollout(self.__target_parameter) for j in range(0, const.TRAIN_ROLLOUT_COUNT)])
@@ -72,37 +61,28 @@ class Trainer(object):
         print(gfd)
 
 class Rollout(object):
-    def __init__(self, policy_factory, game_factory):
+    def __init__(self, policy_factory, game_manager):
         self.__policy_factory = policy_factory
-        self.__game_factory = game_factory
-    
+        self.__game_manager = game_manager
+
     def __call__(self, policy_parameter):
-        game = self.__game_factory()
         policy = self.__policy_factory(policy_parameter)
+        game = game_manager.new_game()
+
+        action = policy(xp.asarray([game.current_state()])).data[0]
+        game.shoot(action)
 
         income = 0
         discount_rate = const.DISCOUNT_RATE
         for k in range(0, const.ROLLOUT_EPOC):
-            state = game.current_state().reshape(1, const.STATE_SIZE)
-            action = policy(state)
-            reward = game.update(action)
+            reward = game.update()
             income += discount_rate * reward
             discount_rate *= const.DISCOUNT_RATE
 
         return income
 
-# trainer = Trainer(Policy, TestGame)
-# for _ in range(0, const.ITERATION):
-#     trainer.train()
-
-game_manager = game.GameManager()
-policy = Policy(xp.random.rand(const.POLICY_PARAMETER_SIZE))
-
-for i in range(0, 1000):
-    if i % 100 == 0:
-        game = game_manager.new_game()
-        action = policy(xp.asarray([game.current_state()])).data[0]
-        print(action)
-        game.shoot(action / 10)
-
-    game.update()
+if __name__ == '__main__':
+    game_manager = game.GameManager()
+    trainer = Trainer(Policy, game_manager)
+    for _ in range(0, const.ITERATION):
+        trainer.train()
