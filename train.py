@@ -4,8 +4,9 @@ Train the policy with finite-difference policy gradient
 
 import chainer
 import chainer.functions as F
-import cupy
+import cupy as cp
 import numpy as np
+import matplotlib.pyplot as plt
 
 from pgfd import const, game
 
@@ -102,6 +103,8 @@ class Trainer(object):
         self.__target_parameter += (const.LEARNING_RATE * gfd)
         print('parameter:\n{}'.format(self.__target_parameter))
 
+        return expected_income
+
 
 class Rollout(object):
     """
@@ -147,17 +150,50 @@ class Tester(object):
         while not game.is_terminal:
             game.update()
 
+class Plotter(object):
+    def __init__(self):
+        fig, ax = plt.subplots(1, 1)
+        lines, = ax.plot([0], [0]) 
+        plt.xlabel("Time stamp")
+        plt.ylabel("Reward")
+        plt.tight_layout()
+
+        self.__fig = fig
+        self.__ax = ax
+        self.__lines = lines
+        self.__points = []
+
+    def plot(self, point):
+        points = self.__points
+        points.append(point)
+
+        self.__lines.set_data(range(len(points)), points)
+        self.__ax.set_xlim((0.0, len(points)))
+        self.__ax.set_ylim((0.0, np.max(points)))
+        plt.pause(.01)
 
 if __name__ == '__main__':
     game_manager = game.GameManager()
     trainer = Trainer(Policy, game_manager)
     tester = Tester(game_manager, trainer)
 
-    for _ in range(0, const.ITERATION):
-        trainer.train()
+    plotter = Plotter()
 
-        tester.test([100.0, 50.0])
-        tester.test([40.0, 80.0])
-        tester.test([140.0, 30.0])
-        tester.test([140.0, 70.0])
+    for _ in range(1000):
+        policy = Policy(xp.asarray([-0.565921, -0.2087926, -2.46556049, -0.91585176, 0.33338258, 0.41990558, -5.056393, 0.57013692, 1.08717598, -0.2268253, 0.28361697, -0.76006312, -1.92836859, -3.53624301, -2.75193499, 1.73638419]))
+
+        game = game_manager.new_game(True)
+        action = policy(xp.asarray([game.current_state()])).data[0]
+        game.shoot(action)
+        while not game.is_terminal:
+            game.update()
+    
+    for itr in range(0, const.ITERATION):
+        current_expected_income = trainer.train()
+        plotter.plot(current_expected_income)
+
+        if itr % 100 == 0:
+            tester.test([100.0, 50.0])
+            tester.test([40.0, 80.0])
+            tester.test([140.0, 30.0])
 

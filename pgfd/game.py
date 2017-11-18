@@ -118,7 +118,7 @@ class Display(object):
 
         self.__screen.fill((0, 0, 0))
 
-        delta_ms = self.__clock.tick(30)
+        delta_ms = self.__clock.tick(60)
         return delta_ms / 1000
 
     def update(self):
