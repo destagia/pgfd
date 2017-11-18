@@ -38,7 +38,7 @@ class Bullet(object):
     def draw(self, display):
         xi = int(self.__position[0])
         yi = int(self.__position[1])
-        display.circle((100, 20, 200), (xi, yi), 2)
+        display.circle((20, 100, 255), (xi, yi), 2)
 
 class Enemy(object):
     def __init__(self, position):
@@ -53,17 +53,7 @@ class Enemy(object):
     def position(self): return self.__position
 
     def collide(self, position):
-        x, y = position
-        if self.__rect.x > x:
-            return False
-        if self.__rect.x + self.__rect.width < x:
-            return False
-        if self.__rect.y > y:
-            return False
-        if self.__rect.y + self.__rect.height < y:
-            return False
-
-        return True
+        return self.__rect.collidepoint(position[0], position[1])
 
     def update(self, dt):
         pass
@@ -80,6 +70,7 @@ class Game(object):
         self.add(self.__enemy)
 
         self.__is_terminal = False
+        self.__time = 0
 
     def add(self, game_object):
         self.__game_objects.append(game_object)
@@ -107,9 +98,12 @@ class Game(object):
             if self.__enemy.collide(self.__bullet.position):
                 self.__is_terminal = True
                 return 1.0
-            else:
-                self.__is_terminal = self.__bullet.position[0] > (self.__enemy.position[0] + 20)
-                return 0.0
+
+
+        self.__is_terminal = self.__bullet.position[0] > (self.__enemy.position[0] + 20) or self.__time > 1000
+        self.__time += 1
+
+        return 0.0
 
 class Display(object):
     def __init__(self):
@@ -136,6 +130,8 @@ class Display(object):
         pygame.draw.circle(self.__screen, color, (x, y), radius)
 
     def rect(self, color, rect):
+        y = SCREEN_SIZE[1] - rect.y - rect.height
+        rect = pygame.Rect(rect.x, y, rect.width, rect.height)
         pygame.draw.rect(self.__screen, color, rect)
 
 class DevNull(object):

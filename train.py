@@ -11,12 +11,28 @@ from pgfd import const, game
 
 xp = np
 
+
 def unit_vector(k, e):
+    """
+    Unit vector
+
+    unit vector is the vector, the only k-th element of which has value e.
+    The other elements are all zero.
+    """
     unit_vector = xp.zeros(const.POLICY_PARAMETER_SIZE, dtype=xp.float32)
     unit_vector[k] = e
     return unit_vector
 
+
 class Policy(object):
+    """
+    policy for the actor
+
+    This policy has the parameter, size of which is const.POLICY_PARAMATER_SIZE.
+    The output (action) of this policy is trasnparent for the input (state)
+    if the parameter is unchanged.
+    """
+
     def __init__(self, parameter):
         self.__parameter = parameter
 
@@ -37,7 +53,17 @@ class Policy(object):
         h = F.linear(state, w1)
         return F.linear(h, w2)
 
+
 class Trainer(object):
+    """
+    Trainer of the policy parameter
+
+    Trainer does it by finite-difference policy gradient.
+    By doing roll-outs for the enough many times, it gets the expected return under a parameter.
+    It increments the paramaeter with small value, and try to get expected return,
+    then compares which is better, the old one or the incremented one.
+    """
+
     def __init__(self, policy_factory, game_manager):
         self.__policy_factory = policy_factory
         self.__rollout = Rollout(policy_factory, game_manager)
@@ -55,26 +81,35 @@ class Trainer(object):
 
         print('Expected income: {}'.format(expected_income))
         for k in range(0, const.POLICY_PARAMETER_SIZE):
-            d_parameter_increment = unit_vector(k, const.PARAMETER_E)
+            increment = np.random.uniform(const.PARAMETER_E_MIN, const.PARAMETER_E_MAX)
+            d_parameter_increment = unit_vector(k, increment)
             parameter_increment = self.__target_parameter + d_parameter_increment
 
             incomes_increment = np.asarray([self.__rollout(parameter_increment) for j in range(0, const.TRAIN_ROLLOUT_COUNT)])
             expected_income_increment = incomes_increment.mean()
             print('Incremented expected income: {}'.format(expected_income_increment))
 
-            d_expected_income = (expected_income_increment - expected_income) / const.PARAMETER_E
+            d_expected_income = (expected_income_increment - expected_income) / increment
 
             d_parameter[k] = d_parameter_increment
             d_J[k] = d_expected_income
 
         # policy gradient in finite-difference
         gfd = xp.linalg.inv(d_parameter.T.dot(d_parameter)).dot(d_parameter.T).dot(d_J)
-        print(gfd)
+        print('gradient:\n{}'.format(gfd))
 
         # update the parameter of policy with gradient
         self.__target_parameter += (const.LEARNING_RATE * gfd)
+        print('parameter:\n{}'.format(self.__target_parameter))
+
 
 class Rollout(object):
+    """
+    Rollout the game with policy
+
+    By doing rollout, we can estimate the expected return of the parameter!
+    """
+
     def __init__(self, policy_factory, game_manager):
         self.__policy_factory = policy_factory
         self.__game_manager = game_manager
@@ -93,7 +128,12 @@ class Rollout(object):
 
         return income
 
+
 class Tester(object):
+    """
+    Test and display the behaviour of the policy parameter
+    """
+
     def __init__(self, game_manager, trainer):
         self.__game_manager = game_manager
         self.__trainer = trainer
@@ -106,6 +146,7 @@ class Tester(object):
         game.shoot(action)
         while not game.is_terminal:
             game.update()
+
 
 if __name__ == '__main__':
     game_manager = game.GameManager()
